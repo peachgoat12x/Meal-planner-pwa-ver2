@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Meal Planner" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Meal Planner</title>
+  <style>
+    /* ── Variables ── */
+    :root {
+      --max-w: 460px;
+      --tab-bar-h: 64px;
+      --header-h: 56px;
+      --week-strip-h: 44px;
+      --fab-size: 52px;
+      --fab-bottom: calc(var(--tab-bar-h) + 16px);
+
+      --bg:        #f7f6f3;
+      --surface:   #ffffff;
+      --border:    #e8e5df;
+      --text:      #1c1b19;
+      --text-muted:#8a8680;
+      --accent:    #2d6a4f;
+      --accent-fg: #ffffff;
+      --tab-active:#2d6a4f;
+      --tab-inactive:#a09e9a;
+      --danger:    #c0392b;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+
+      --shadow-fab: 0 4px 16px rgba(0,0,0,0.18);
+      --shadow-card:0 1px 4px rgba(0,0,0,0.07);
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── App shell ── */
+    #app {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: var(--bg);
+    }
+
+    /* ── Header ── */
+    .tab-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-header-title {
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    /* ── Week strip ── */
+    .week-strip {
+      height: var(--week-strip-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .week-strip-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .week-strip-btn:active { background: var(--border); }
+    .week-strip-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.1px;
+    }
+
+    /* ── Page content ── */
+    #page {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: calc(var(--tab-bar-h) + var(--fab-size) + 24px);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Section headings (Fridge tab) ── */
+    .section-heading {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 20px 20px 8px;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 48px 40px;
+      gap: 12px;
+    }
+    .empty-state-icon {
+      color: var(--text-muted);
+      opacity: 0.5;
+      margin-bottom: 4px;
+    }
+    .empty-state-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .empty-state-body {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 260px;
+    }
+    .empty-state-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: var(--fab-bottom);
+      right: max(16px, calc(50vw - var(--max-w)/2 + 16px));
+      width: var(--fab-size);
+      height: var(--fab-size);
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-fab);
+      z-index: 20;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .fab:active {
+      transform: scale(0.93);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    /* ── Tab bar ── */
+    #tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: var(--max-w);
+      height: var(--tab-bar-h);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+      z-index: 30;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--tab-inactive);
+      -webkit-tap-highlight-color: transparent;
+      transition: color 0.15s ease;
+      padding-bottom: 4px;
+    }
+    .tab-btn.active { color: var(--tab-active); }
+    .tab-btn svg { display: block; }
+    .tab-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    /* ── Utility ── */
+    .ico { line-height: 0; }
+    .ico-muted { line-height: 0; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="page"></div>
+  <nav id="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(0)" id="tab-0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Fridge icon -->
+        <rect x="5" y="2" width="14" height="20" rx="2"/>
+        <line x1="5" y1="9" x2="19" y2="9"/>
+        <line x1="9" y1="5" x2="9" y2="7"/>
+        <line x1="9" y1="13" x2="9" y2="17"/>
+      </svg>
+      <span class="tab-label">Fridge</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(1)" id="tab-1">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Plan / clipboard icon -->
+        <rect x="5" y="3" width="14" height="18" rx="2"/>
+        <path d="M9 3h6v3H9z"/>
+        <line x1="9" y1="12" x2="15" y2="12"/>
+        <line x1="9" y1="16" x2="13" y2="16"/>
+      </svg>
+      <span class="tab-label">Plan</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(2)" id="tab-2">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Shop / basket icon -->
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      <span class="tab-label">Shop</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(3)" id="tab-3">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Recipes / cookbook icon -->
+        <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+        <line x1="9" y1="7" x2="15" y2="7"/>
+        <line x1="9" y1="11" x2="13" y2="11"/>
+      </svg>
+      <span class="tab-label">Recipes</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab(4)" id="tab-4">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Pantry / shelves icon -->
+        <rect x="3" y="4" width="18" height="4" rx="1"/>
+        <rect x="3" y="11" width="18" height="4" rx="1"/>
+        <rect x="3" y="18" width="18" height="3" rx="1"/>
+        <line x1="7" y1="4" x2="7" y2="2"/>
+        <line x1="17" y1="4" x2="17" y2="2"/>
+      </svg>
+      <span class="tab-label">Pantry</span>
+    </button>
+  </nav>
+</div>
+
+<button class="fab" id="fab" onclick="fabAction()" aria-label="Add">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<script>
+  // ── SVG icons ──────────────────────────────────────────────────────────────
+
+  const ICO_CHEV_LEFT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
+  const ICO_CHEV_RIGHT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+  // Empty state icons (48×48)
+  const ICO_FRIDGE_LG = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="9" y1="5" x2="9" y2="7"/><line x1="9" y1="13" x2="9" y2="17"/></svg>`;
+  const ICO_PLAN_LG   = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>`;
+  const ICO_SHOP_LG   = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>`;
+  const ICO_RECIPES_LG= `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="13" y2="11"/></svg>`;
+  const ICO_PANTRY_LG = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="11" width="18" height="4" rx="1"/><rect x="3" y="18" width="18" height="3" rx="1"/><line x1="7" y1="4" x2="7" y2="2"/><line x1="17" y1="4" x2="17" y2="2"/></svg>`;
+
+  // ── Data structures ────────────────────────────────────────────────────────
+
+  let ingredients    = [];
+  let dishes         = [];
+  let readyMeals     = [];
+  let weeks          = {};
+  let shoppingList   = [];
+  let shoppingExtras = [];
+  let servingGuide   = [];
+  let customUnits    = [];
+
+  // ── State variables ────────────────────────────────────────────────────────
+
+  let activeTab    = 0;
+  let viewWeek     = '';
+  let confirmDel   = null;
+
+  // Filter state
+  let pantrySearch    = '';
+  let pantryLocFilter = 'all';
+  let pantryCatFilter = 'all';
+  let pantryExpFilter = 'all';
+  let dishSearch      = '';
+  let dishCatFilter   = 'all';
+
+  // ── localStorage ──────────────────────────────────────────────────────────
+
+  function loadData() {
+    try { ingredients    = JSON.parse(localStorage.getItem('ingredients'))    || []; } catch(e) { ingredients    = []; }
+    try { dishes         = JSON.parse(localStorage.getItem('dishes'))         || []; } catch(e) { dishes         = []; }
+    try { readyMeals     = JSON.parse(localStorage.getItem('readyMeals'))     || []; } catch(e) { readyMeals     = []; }
+    try { weeks          = JSON.parse(localStorage.getItem('weeks'))          || {}; } catch(e) { weeks          = {}; }
+    try { shoppingList   = JSON.parse(localStorage.getItem('shoppingList'))   || []; } catch(e) { shoppingList   = []; }
+    try { shoppingExtras = JSON.parse(localStorage.getItem('shoppingExtras')) || []; } catch(e) { shoppingExtras = []; }
+    try { servingGuide   = JSON.parse(localStorage.getItem('servingGuide'))   || []; } catch(e) { servingGuide   = []; }
+    try { customUnits    = JSON.parse(localStorage.getItem('customUnits'))    || []; } catch(e) { customUnits    = []; }
+  }
+
+  function saveData() {
+    localStorage.setItem('ingredients',    JSON.stringify(ingredients));
+    localStorage.setItem('dishes',         JSON.stringify(dishes));
+    localStorage.setItem('readyMeals',     JSON.stringify(readyMeals));
+    localStorage.setItem('weeks',          JSON.stringify(weeks));
+    localStorage.setItem('shoppingList',   JSON.stringify(shoppingList));
+    localStorage.setItem('shoppingExtras', JSON.stringify(shoppingExtras));
+    localStorage.setItem('servingGuide',   JSON.stringify(servingGuide));
+    localStorage.setItem('customUnits',    JSON.stringify(customUnits));
+  }
+
+  // ── Week helpers ───────────────────────────────────────────────────────────
+
+  function getMondayStr(date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=Sun, 1=Mon … 6=Sat
+    const diff = (day === 0) ? -6 : 1 - day; // days to subtract to reach Monday
+    d.setDate(d.getDate() + diff);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function getDefaultWeek() {
+    const today = new Date();
+    const day = today.getDay(); // 0=Sun, 6=Sat
+    if (day === 6 || day === 0) {
+      // Weekend: show upcoming week (next Monday)
+      const next = new Date(today);
+      const daysToMonday = day === 6 ? 2 : 1;
+      next.setDate(today.getDate() + daysToMonday);
+      return next.toISOString().slice(0, 10);
+    }
+    // Weekday: show current week
+    return getMondayStr(today);
+  }
+
+  function weekStripLabel(mondayStr) {
+    const mon = new Date(mondayStr + 'T00:00:00');
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monLabel = `${mon.getDate()} ${months[mon.getMonth()]}`;
+    const sunLabel = `${sun.getDate()} ${months[sun.getMonth()]}`;
+    return `${monLabel} – ${sunLabel}`;
+  }
+
+  function weekStripHtml() {
+    return `
+      <div class="week-strip">
+        <button class="week-strip-btn ico" onclick="prevWeek()" aria-label="Previous week">${ICO_CHEV_LEFT}</button>
+        <span class="week-strip-label">${weekStripLabel(viewWeek)}</span>
+        <button class="week-strip-btn ico" onclick="nextWeek()" aria-label="Next week">${ICO_CHEV_RIGHT}</button>
+      </div>`;
+  }
+
+  function prevWeek() {
+    const d = new Date(viewWeek + 'T00:00:00');
+    d.setDate(d.getDate() - 7);
+    viewWeek = d.toISOString().slice(0, 10);
+    render();
+  }
+
+  function nextWeek() {
+    const d = new Date(viewWeek + 'T00:00:00');
+    d.setDate(d.getDate() + 7);
+    viewWeek = d.toISOString().slice(0, 10);
+    render();
+  }
+
+  // ── Tab renders ────────────────────────────────────────────────────────────
+
+  function renderFridge() {
+    return `
+      <div class="tab-header">
+        <div class="tab-header-title">Fridge</div>
+      </div>
+      <div class="section-heading">Fridge</div>
+      <div class="section-heading">Freezer</div>
+      <div class="empty-state">
+        <div class="empty-state-icon ico">${ICO_FRIDGE_LG}</div>
+        <div class="empty-state-title">No cooked meals yet</div>
+        <div class="empty-state-body">Cook a dish and log it here to track portions in your fridge and freezer</div>
+        <div class="empty-state-hint">Tap + to add your first dish</div>
+      </div>`;
+  }
+
+  function renderPlan() {
+    return `
+      <div class="tab-header">
+        <div class="tab-header-title">Plan</div>
+        ${weekStripHtml()}
+      </div>
+      <div class="empty-state">
+        <div class="empty-state-icon ico">${ICO_PLAN_LG}</div>
+        <div class="empty-state-title">No plan for this week yet</div>
+        <div class="empty-state-body">Decide what you want to cook for the week</div>
+        <div class="empty-state-hint">Tap + to start planning</div>
+      </div>`;
+  }
+
+  function renderShop() {
+    return `
+      <div class="tab-header">
+        <div class="tab-header-title">Shop</div>
+        ${weekStripHtml()}
+      </div>
+      <div class="empty-state">
+        <div class="empty-state-icon ico">${ICO_SHOP_LG}</div>
+        <div class="empty-state-title">No shopping list yet</div>
+        <div class="empty-state-body">Plan what you want to cook to see what you need to buy</div>
+        <div class="empty-state-hint">You can also add items manually</div>
+      </div>`;
+  }
+
+  function renderRecipes() {
+    return `
+      <div class="tab-header">
+        <div class="tab-header-title">Recipes</div>
+      </div>
+      <div class="empty-state">
+        <div class="empty-state-icon ico">${ICO_RECIPES_LG}</div>
+        <div class="empty-state-title">No recipes yet</div>
+        <div class="empty-state-body">Add your first recipe to start building your cook plan</div>
+        <div class="empty-state-hint">Tap + to add a recipe</div>
+      </div>`;
+  }
+
+  function renderPantry() {
+    return `
+      <div class="tab-header">
+        <div class="tab-header-title">Pantry</div>
+      </div>
+      <div class="empty-state">
+        <div class="empty-state-icon ico">${ICO_PANTRY_LG}</div>
+        <div class="empty-state-title">No ingredients yet</div>
+        <div class="empty-state-body">Add what you have to start tracking your ingredients</div>
+        <div class="empty-state-hint">Tap + to add an ingredient</div>
+      </div>`;
+  }
+
+  // ── Render architecture ────────────────────────────────────────────────────
+
+  const TAB_RENDERS = [renderFridge, renderPlan, renderShop, renderRecipes, renderPantry];
+
+  function renderContent() {
+    const page = document.getElementById('page');
+    page.scrollTop = 0;
+    page.innerHTML = TAB_RENDERS[activeTab]();
+  }
+
+  function render() {
+    const page = document.getElementById('page');
+    const scrollTop = page.scrollTop;
+    page.innerHTML = TAB_RENDERS[activeTab]();
+    page.scrollTop = scrollTop;
+  }
+
+  // ── Tab navigation ─────────────────────────────────────────────────────────
+
+  function switchTab(index) {
+    activeTab = index;
+    // Update tab button styles
+    document.querySelectorAll('.tab-btn').forEach(function(btn, i) {
+      btn.classList.toggle('active', i === index);
+    });
+    renderContent();
+  }
+
+  // ── FAB actions (stubs) ────────────────────────────────────────────────────
+
+  function fabFridge()  { console.log('FAB: Fridge — log cooked or ad hoc meal'); }
+  function fabPlan()    { console.log('FAB: Plan — open weekly planning flow'); }
+  function fabShop()    { console.log('FAB: Shop — add manual shopping item'); }
+  function fabRecipes() { console.log('FAB: Recipes — add new recipe'); }
+  function fabPantry()  { console.log('FAB: Pantry — add new ingredient'); }
+
+  const FAB_ACTIONS = [fabFridge, fabPlan, fabShop, fabRecipes, fabPantry];
+
+  function fabAction() {
+    FAB_ACTIONS[activeTab]();
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+
+  (function init() {
+    loadData();
+    viewWeek = getDefaultWeek();
+    renderContent();
+  })();
+</script>
+</body>
+</html>
