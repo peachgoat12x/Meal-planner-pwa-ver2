@@ -313,8 +313,7 @@
   let dishes         = [];
   let readyMeals     = [];
   let weeks          = {};
-  let shoppingList   = [];
-  let shoppingExtras = [];
+  let shoppingItems  = [];
   let servingGuide   = [];
   let customUnits    = [];
 
@@ -339,8 +338,7 @@
     try { dishes         = JSON.parse(localStorage.getItem('dishes'))         || []; } catch(e) { dishes         = []; }
     try { readyMeals     = JSON.parse(localStorage.getItem('readyMeals'))     || []; } catch(e) { readyMeals     = []; }
     try { weeks          = JSON.parse(localStorage.getItem('weeks'))          || {}; } catch(e) { weeks          = {}; }
-    try { shoppingList   = JSON.parse(localStorage.getItem('shoppingList'))   || []; } catch(e) { shoppingList   = []; }
-    try { shoppingExtras = JSON.parse(localStorage.getItem('shoppingExtras')) || []; } catch(e) { shoppingExtras = []; }
+    try { shoppingItems  = JSON.parse(localStorage.getItem('shoppingItems'))  || []; } catch(e) { shoppingItems  = []; }
     try { servingGuide   = JSON.parse(localStorage.getItem('servingGuide'))   || []; } catch(e) { servingGuide   = []; }
     try { customUnits    = JSON.parse(localStorage.getItem('customUnits'))    || []; } catch(e) { customUnits    = []; }
   }
@@ -350,8 +348,7 @@
     localStorage.setItem('dishes',         JSON.stringify(dishes));
     localStorage.setItem('readyMeals',     JSON.stringify(readyMeals));
     localStorage.setItem('weeks',          JSON.stringify(weeks));
-    localStorage.setItem('shoppingList',   JSON.stringify(shoppingList));
-    localStorage.setItem('shoppingExtras', JSON.stringify(shoppingExtras));
+    localStorage.setItem('shoppingItems',  JSON.stringify(shoppingItems));
     localStorage.setItem('servingGuide',   JSON.stringify(servingGuide));
     localStorage.setItem('customUnits',    JSON.stringify(customUnits));
   }
@@ -361,9 +358,12 @@
   function getMondayStr(date) {
     const d = new Date(date);
     const day = d.getDay(); // 0=Sun, 1=Mon … 6=Sat
-    const diff = (day === 0) ? -6 : 1 - day; // days to subtract to reach Monday
+    const diff = (day === 0) ? -6 : 1 - day; // days to reach Monday
     d.setDate(d.getDate() + diff);
-    return d.toISOString().slice(0, 10);
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
   }
 
   function getDefaultWeek() {
@@ -374,7 +374,10 @@
       const next = new Date(today);
       const daysToMonday = day === 6 ? 2 : 1;
       next.setDate(today.getDate() + daysToMonday);
-      return next.toISOString().slice(0, 10);
+      const yyyy = next.getFullYear();
+      const mm   = String(next.getMonth() + 1).padStart(2, '0');
+      const dd   = String(next.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     }
     // Weekday: show current week
     return getMondayStr(today);
@@ -416,18 +419,24 @@
   // ── Tab renders ────────────────────────────────────────────────────────────
 
   function renderFridge() {
+    if (readyMeals.length === 0) {
+      return `
+        <div class="tab-header">
+          <div class="tab-header-title">Fridge</div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-state-icon ico">${ICO_FRIDGE_LG}</div>
+          <div class="empty-state-title">No cooked meals yet</div>
+          <div class="empty-state-body">Log cooked dishes here to track portions in your fridge and freezer</div>
+          <div class="empty-state-hint">Tap + to add your first dish</div>
+        </div>`;
+    }
     return `
       <div class="tab-header">
         <div class="tab-header-title">Fridge</div>
       </div>
       <div class="section-heading">Fridge</div>
-      <div class="section-heading">Freezer</div>
-      <div class="empty-state">
-        <div class="empty-state-icon ico">${ICO_FRIDGE_LG}</div>
-        <div class="empty-state-title">No cooked meals yet</div>
-        <div class="empty-state-body">Cook a dish and log it here to track portions in your fridge and freezer</div>
-        <div class="empty-state-hint">Tap + to add your first dish</div>
-      </div>`;
+      <div class="section-heading">Freezer</div>`;
   }
 
   function renderPlan() {
@@ -452,9 +461,10 @@
       </div>
       <div class="empty-state">
         <div class="empty-state-icon ico">${ICO_SHOP_LG}</div>
-        <div class="empty-state-title">No shopping list yet</div>
+        <div class="empty-state-title">No items to buy yet</div>
         <div class="empty-state-body">Plan what you want to cook to see what you need to buy</div>
-        <div class="empty-state-hint">You can also add items manually</div>
+        <div class="empty-state-body">You can also add items manually</div>
+        <div class="empty-state-hint">Tap + to add an item</div>
       </div>`;
   }
 
@@ -466,7 +476,7 @@
       <div class="empty-state">
         <div class="empty-state-icon ico">${ICO_RECIPES_LG}</div>
         <div class="empty-state-title">No recipes yet</div>
-        <div class="empty-state-body">Add your first recipe to start building your cook plan</div>
+        <div class="empty-state-body">Add your first recipe to save dishes you cook</div>
         <div class="empty-state-hint">Tap + to add a recipe</div>
       </div>`;
   }
@@ -479,8 +489,8 @@
       <div class="empty-state">
         <div class="empty-state-icon ico">${ICO_PANTRY_LG}</div>
         <div class="empty-state-title">No ingredients yet</div>
-        <div class="empty-state-body">Add what you have to start tracking your ingredients</div>
-        <div class="empty-state-hint">Tap + to add an ingredient</div>
+        <div class="empty-state-body">Add ingredients you have to keep track of what's in your kitchen</div>
+        <div class="empty-state-hint">Tap + to add your first ingredient</div>
       </div>`;
   }
 
@@ -532,6 +542,9 @@
     loadData();
     viewWeek = getDefaultWeek();
     renderContent();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
   })();
 </script>
 </body>
